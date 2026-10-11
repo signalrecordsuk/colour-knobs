@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Colours">
+</head>
+<body style="margin:0">
+<title>Colour Knobs</title>
+<style>
+  /* Layout: one full-screen colour field; three toy-synth knobs sit on the corners of a triangle, each with its own lamp. */
+  :root {
+    --knob-body: #26252b;
+    --knob-ridge: #34333b;
+    --knob-cap-hi: #5a5966;
+    --knob-cap-lo: #1c1b21;
+    --ink: #ffffff;
+    --shade: rgba(0, 0, 0, 0.45);
+    --chip: rgba(20, 20, 24, 0.38);
+    color-scheme: dark;
+  }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    background: rgb(200, 60, 170);
+    transition: background-color 120ms linear;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .stage {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+  }
+  .tri {
+    --W: min(100vw, 100vh);
+    --H: min(100vh, calc(var(--W) * 1.5));
+    --k: min(calc(var(--W) * 0.3), calc(var(--H) * 0.25));
+    position: relative;
+    width: var(--W);
+    height: var(--H);
+  }
+  @supports (height: 100dvh) {
+    .tri {
+      --W: min(100vw, 100dvh);
+      --H: min(100dvh, calc(var(--W) * 1.5));
+    }
+  }
+  .unit {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(var(--k) * 0.12);
+  }
+  .unit[data-ch="r"] { --x: 50%; --y: 27%; --c: #ff2b2b; }
+  .unit[data-ch="g"] { --x: 23%; --y: 72%; --c: #1fd34a; }
+  .unit[data-ch="b"] { --x: 77%; --y: 72%; --c: #2f6bff; }
+
+  /* The lamp: a glass bulb lit with the channel's exact value, e.g. rgb(v,0,0) */
+  .lamp {
+    width: calc(var(--k) * 0.36);
+    height: calc(var(--k) * 0.36);
+    border-radius: 50%;
+    background: #000;
+    box-shadow: 0 0 0 calc(var(--k) * 0.035) var(--knob-body), 0 calc(var(--k) * 0.03) calc(var(--k) * 0.08) var(--shade);
+    position: relative;
+  }
+  .lamp .light {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--lit, #000);
+    box-shadow: 0 0 calc(var(--k) * 0.35 * var(--p, 0)) calc(var(--k) * 0.08 * var(--p, 0)) var(--glow, transparent);
+    transition: background-color 90ms linear, box-shadow 90ms linear;
+  }
+  .lamp::after {
+    content: "";
+    position: absolute;
+    left: 22%; top: 14%;
+    width: 34%; height: 24%;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.45);
+    transform: rotate(-25deg);
+    filter: blur(1px);
+  }
+
+  .wrap {
+    position: relative;
+    width: calc(var(--k) * 1.28);
+    height: calc(var(--k) * 1.28);
+    display: grid;
+    place-items: center;
+  }
+  .tick {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: calc(var(--k) * 0.045);
+    height: calc(var(--k) * 0.045);
+    margin: calc(var(--k) * -0.0225);
+    border-radius: 50%;
+    background: var(--ink);
+    box-shadow: 0 0 0 2px var(--shade);
+    transform: rotate(var(--t)) translateY(calc(var(--k) * -0.6));
+  }
+  .tick.big {
+    width: calc(var(--k) * 0.07);
+    height: calc(var(--k) * 0.07);
+    margin: calc(var(--k) * -0.035);
+  }
+
+  /* The knob: a coloured base disc that stays put, with an animal head on top that turns */
+  .knob {
+    width: var(--k);
+    height: var(--k);
+    border-radius: 50%;
+    position: relative;
+    cursor: grab;
+    outline: none;
+    transition: transform 120ms ease;
+  }
+  .knob:active { cursor: grabbing; transform: scale(0.96); }
+  .knob:focus-visible .base { box-shadow: 0 0 0 calc(var(--k) * 0.04) var(--ink), 0 calc(var(--k) * 0.05) calc(var(--k) * 0.1) var(--shade); }
+  .base {
+    position: absolute;
+    inset: 9%;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.4), transparent 60%),
+      var(--c);
+    box-shadow:
+      0 calc(var(--k) * 0.05) calc(var(--k) * 0.1) var(--shade),
+      inset 0 calc(var(--k) * -0.04) calc(var(--k) * 0.06) rgba(0, 0, 0, 0.3);
+  }
+  .pop {
+    position: absolute;
+    inset: 0;
+    filter: drop-shadow(0 calc(var(--k) * 0.03) calc(var(--k) * 0.03) rgba(0, 0, 0, 0.35));
+  }
+  .pop.swap { animation: pop 420ms cubic-bezier(.3, 1.6, .5, 1); }
+  @keyframes pop {
+    0% { transform: scale(0.2) rotate(-40deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+  .dial {
+    position: absolute;
+    inset: 0;
+    transform: rotate(var(--a, -135deg));
+    transition: transform 160ms cubic-bezier(.3, 1.4, .5, 1);
+  }
+  .dial svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .knob.dragging .dial { transition: none; }
+
+  .corner {
+    position: fixed;
+    right: 12px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    display: flex;
+    gap: 8px;
+  }
+  .corner button {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--chip);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  .corner button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .corner svg { width: 20px; height: 20px; }
+  .corner .off { display: none; }
+  .corner.left { right: auto; left: 12px; }
+  .corner #animals { width: 64px; height: 64px; background: var(--ink); color: var(--knob-body); box-shadow: 0 4px 12px var(--shade); }
+  .corner #animals svg { width: 36px; height: 36px; }
+  .corner #animals:active { transform: scale(0.92); }
+  .corner [aria-pressed="false"] .on { display: none; }
+  .corner [aria-pressed="false"] .off { display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    body, .dial, .lamp .light, .knob { transition: none; }
+    .pop.swap { animation: none; }
+  }
+</style>
+
+<div class="stage">
+  <div class="tri" id="tri">
+    <div class="unit" data-ch="r">
+      <div class="lamp"><div class="light"></div></div>
+      <div class="wrap"><div class="knob" role="slider" tabindex="0" aria-label="Red" aria-valuemin="0" aria-valuemax="255"><div class="base"></div><div class="pop"><div class="dial"></div></div></div></div>
+    </div>
+    <div class="unit" data-ch="g">
+      <div class="lamp"><div class="light"></div></div>
+      <div class="wrap"><div class="knob" role="slider" tabindex="0" aria-label="Green" aria-valuemin="0" aria-valuemax="255"><div class="base"></div><div class="pop"><div class="dial"></div></div></div></div>
+    </div>
+    <div class="unit" data-ch="b">
+      <div class="lamp"><div class="light"></div></div>
+      <div class="wrap"><div class="knob" role="slider" tabindex="0" aria-label="Blue" aria-valuemin="0" aria-valuemax="255"><div class="base"></div><div class="pop"><div class="dial"></div></div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="corner left">
+  <button id="animals" type="button" aria-label="Change animals">
+    <svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="16" rx="5" ry="4.2"/><ellipse cx="5.2" cy="10.5" rx="2.2" ry="2.8"/><ellipse cx="9.3" cy="6.3" rx="2.2" ry="2.9"/><ellipse cx="14.7" cy="6.3" rx="2.2" ry="2.9"/><ellipse cx="18.8" cy="10.5" rx="2.2" ry="2.8"/></svg>
+  </button>
+</div>
+<div class="corner">
+  <button id="sound" type="button" aria-label="Sound" aria-pressed="true">
+    <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg>
+    <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
+  </button>
+  <button id="full" type="button" aria-label="Full screen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  </button>
+</div>
+
+<script>
+(() => {
+  const MIN_A = -135, MAX_A = 135, SPAN = MAX_A - MIN_A;
+  const TAP_STEP = 51;           // 0 → 51 → 102 → 153 → 204 → 255 → back to 0
+  const WHEEL_SENS = 0.45;       // value units per pixel of two-finger swipe
+  const KEY_STEP = 8;
+  const PITCH = { r: 330, g: 392, b: 494 };
+
+  const vals = { r: 0, g: 0, b: 0 };
+  const units = {};
+  document.querySelectorAll('.unit').forEach(u => {
+    const ch = u.dataset.ch;
+    const wrap = u.querySelector('.wrap');
+    for (let i = 0; i <= 10; i++) {
+      const t = document.createElement('div');
+      t.className = 'tick' + (i % 5 === 0 ? ' big' : '');
+      t.style.setProperty('--t', (MIN_A + SPAN * i / 10) + 'deg');
+      wrap.prepend(t);
+    }
+    units[ch] = { el: u, knob: u.querySelector('.knob'), light: u.querySelector('.light'), drag: null };
+  });
+
+  // ---- animals: each head is drawn in a -60..60 box; the coloured base disc shows behind it ----
+  const INK = '#1b1b1f';
+  const eye = (x, y, r = 6.5) =>
+    `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff"/><circle cx="${x}" cy="${y + r * 0.15}" r="${r * 0.58}" fill="${INK}"/><circle cx="${x - r * 0.22}" cy="${y - r * 0.15}" r="${r * 0.2}" fill="#fff"/>`;
+  const eyes = (dx, y, r) => eye(-dx, y, r) + eye(dx, y, r);
+  const cheeks = (dx, y, c = '#ff8fa8') => `<circle cx="${-dx}" cy="${y}" r="5" fill="${c}" opacity=".55"/><circle cx="${dx}" cy="${y}" r="5" fill="${c}" opacity=".55"/>`;
+  const smile = (y, w = 7, c = INK) => `<path d="M${-w} ${y} Q${-w / 2} ${y + 5} 0 ${y} Q${w / 2} ${y + 5} ${w} ${y}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>`;
+  const mirror = svg => svg + `<g transform="scale(-1,1)">${svg}</g>`;
+
+  const ANIMALS = {
+    tiger: () => {
+      const o = '#f28c28', d = '#2b1d14';
+      return mirror(`<circle cx="-26" cy="-29" r="12" fill="${o}"/><circle cx="-26" cy="-29" r="6" fill="#ffe2c2"/>`) +
+        `<circle r="37" fill="${o}"/>` +
+        `<path d="M-7 -37 L0 -24 L7 -37Z M-17 -34 L-11 -24 L-8 -35Z M17 -34 L11 -24 L8 -35Z" fill="${d}"/>` +
+        mirror(`<path d="M-37 -10 L-22 -6 L-36 -1Z M-35 4 L-22 6 L-34 11Z" fill="${d}"/>`) +
+        `<ellipse cx="-9" cy="14" rx="12" ry="10" fill="#fff6ea"/><ellipse cx="9" cy="14" rx="12" ry="10" fill="#fff6ea"/>` +
+        eyes(14, -7, 7) + `<path d="M-7 4 L7 4 L0 12Z" fill="#e8607a"/>` + smile(17, 6);
+    },
+    elephant: () => {
+      const g = '#a3afc2';
+      return mirror(`<ellipse cx="-36" cy="-2" rx="22" ry="29" fill="${g}"/><ellipse cx="-38" cy="-1" rx="13" ry="19" fill="#eab0c0"/>`) +
+        `<circle cy="-4" r="31" fill="${g}"/>` +
+        `<path d="M-9 6 Q-12 34 0 48 Q8 56 16 48 Q18 42 12 41 Q4 42 4 30 Q4 16 9 6Z" fill="${g}"/>` +
+        `<path d="M-6 30 Q0 32 5 29 M-5 38 Q1 40 6 37" fill="none" stroke="#7d8aa0" stroke-width="2" stroke-linecap="round"/>` +
+        eyes(13, -10, 6.5) + cheeks(20, 6);
+    },
+    penguin: () =>
+      `<path d="M-4 -35 Q-2 -50 8 -46 Q2 -42 5 -35Z" fill="#23262e"/>` +
+      `<circle r="37" fill="#23262e"/>` +
+      `<circle cx="-11" cy="0" r="16" fill="#fff"/><circle cx="11" cy="0" r="16" fill="#fff"/><ellipse cy="13" rx="23" ry="19" fill="#fff"/>` +
+      eyes(11, -2, 6.5) + cheeks(20, 13) + `<path d="M-8 9 L8 9 L0 20Z" fill="#ff9f1c" stroke="#e07b00" stroke-width="1.5" stroke-linejoin="round"/>`,
+    giraffe: () => {
+      const y = '#f7c548', s = '#c47a2c';
+      return mirror(`<path d="M-11 -26 L-15 -48" stroke="${y}" stroke-width="6" stroke-linecap="round"/><circle cx="-15" cy="-49" r="6" fill="#8a5a2b"/>` +
+          `<ellipse cx="-33" cy="-20" rx="13" ry="6.5" fill="${y}" transform="rotate(-25 -33 -20)"/><ellipse cx="-33" cy="-20" rx="7" ry="3" fill="#f2a65e" transform="rotate(-25 -33 -20)"/>`) +
+        `<ellipse cy="-2" rx="30" ry="37" fill="${y}"/>` +
+        `<path d="M-24 -18 q6 -6 10 0 q-2 7 -10 0Z M14 -26 q7 -4 9 3 q-6 5 -9 -3Z M-26 2 q5 -3 6 3 q-4 4 -6 -3Z M20 0 q5 -3 6 4 q-5 3 -6 -4Z" fill="${s}"/>` +
+        `<ellipse cy="19" rx="22" ry="15" fill="#f6e3ad"/><circle cx="-7" cy="16" r="2.5" fill="${s}"/><circle cx="7" cy="16" r="2.5" fill="${s}"/>` +
+        eyes(12, -8, 6.5) + smile(25, 6, '#8a5a2b');
+    },
+    lion: () => {
+      let mane = '';
+      for (let i = 0; i < 12; i++) {
+        const a = i / 12 * Math.PI * 2;
+        mane += `<circle cx="${(Math.cos(a) * 36).toFixed(1)}" cy="${(Math.sin(a) * 36).toFixed(1)}" r="14" fill="${i % 2 ? '#c4631f' : '#d9782a'}"/>`;
+      }
+      return mane + mirror(`<circle cx="-20" cy="-24" r="8" fill="#f5b544"/><circle cx="-20" cy="-24" r="4" fill="#e08a3a"/>`) +
+        `<circle r="30" fill="#f5b544"/>` +
+        `<ellipse cx="-8" cy="13" rx="10" ry="8.5" fill="#fff3d6"/><ellipse cx="8" cy="13" rx="10" ry="8.5" fill="#fff3d6"/>` +
+        eyes(12, -6, 6.5) + `<path d="M-6 4 Q0 2 6 4 L0 11Z" fill="#6b3a1e"/>` + smile(16, 5, '#6b3a1e');
+    },
+    panda: () =>
+      mirror(`<circle cx="-26" cy="-28" r="12" fill="${INK}"/>`) +
+      `<circle r="37" fill="#fafafa" stroke="#dcdce4" stroke-width="1.5"/>` +
+      mirror(`<ellipse cx="-14" cy="-4" rx="10" ry="13" fill="${INK}" transform="rotate(35 -14 -4)"/>`) +
+      eyes(13, -5, 5.5) + `<ellipse cy="10" rx="6" ry="4.5" fill="${INK}"/>` + smile(16, 6) + cheeks(23, 10),
+    frog: () => {
+      const g = '#5cc25a';
+      return mirror(`<circle cx="-19" cy="-21" r="15" fill="${g}"/>`) +
+        `<ellipse cy="6" rx="41" ry="30" fill="${g}"/>` +
+        eyes(19, -21, 10) + cheeks(26, 10) +
+        `<circle cx="-4" cy="2" r="1.8" fill="#2e7a2e"/><circle cx="4" cy="2" r="1.8" fill="#2e7a2e"/>` +
+        `<path d="M-22 12 Q0 32 22 12" fill="none" stroke="#2e7a2e" stroke-width="3" stroke-linecap="round"/>`;
+    },
+    monkey: () => {
+      const b = '#8b5a3c', f = '#f2c9a0';
+      return mirror(`<circle cx="-36" cy="0" r="12" fill="${b}"/><circle cx="-36" cy="0" r="7" fill="${f}"/>`) +
+        `<circle r="35" fill="${b}"/><path d="M-6 -35 Q0 -46 8 -38 Q2 -38 2 -33Z" fill="${b}"/>` +
+        `<circle cx="-11" cy="-6" r="13" fill="${f}"/><circle cx="11" cy="-6" r="13" fill="${f}"/><ellipse cy="13" rx="23" ry="16" fill="${f}"/>` +
+        eyes(11, -6, 6.5) + `<circle cx="-3.5" cy="7" r="2" fill="${b}"/><circle cx="3.5" cy="7" r="2" fill="${b}"/>` +
+        `<path d="M-11 15 Q0 26 11 15" fill="none" stroke="${b}" stroke-width="2.6" stroke-linecap="round"/>`;
+    },
+    owl: () => {
+      const b = '#9c6b3f';
+      return mirror(`<path d="M-30 -20 L-36 -46 L-12 -32Z" fill="${b}"/>`) +
+        `<circle r="37" fill="${b}"/>` +
+        `<path d="M-8 26 l4 4 l4 -4 M0 26 l4 4 l4 -4 M-4 32 l4 4 l4 -4" fill="none" stroke="#7a4f2b" stroke-width="2" stroke-linecap="round" transform="translate(-4 -2)"/>` +
+        mirror(`<circle cx="-15" cy="-4" r="15" fill="#f4e4c8"/><circle cx="-15" cy="-4" r="10" fill="#ffb627"/>`) +
+        `<circle cx="-15" cy="-4" r="6.5" fill="${INK}"/><circle cx="15" cy="-4" r="6.5" fill="${INK}"/><circle cx="-17" cy="-6" r="2" fill="#fff"/><circle cx="13" cy="-6" r="2" fill="#fff"/>` +
+        `<path d="M-5 9 L5 9 L0 19Z" fill="#ffb627" stroke="#d98e00" stroke-width="1.5" stroke-linejoin="round"/>`;
+    },
+    pig: () => {
+      const p = '#f8b4c4';
+      return mirror(`<path d="M-30 -14 L-36 -44 L-10 -31Z" fill="#f59bb0"/>`) +
+        `<circle r="37" fill="${p}"/>` +
+        eyes(14, -10, 6.5) +
+        `<ellipse cy="10" rx="16" ry="12" fill="#f28aa3"/><ellipse cx="-5" cy="10" rx="3" ry="4.5" fill="#b8506a"/><ellipse cx="5" cy="10" rx="3" ry="4.5" fill="#b8506a"/>` +
+        cheeks(25, 8, '#ff6f91') + smile(27, 6, '#b8506a');
+    },
+  };
+  const ORDER = ['tiger', 'elephant', 'penguin', 'giraffe', 'lion', 'panda', 'frog', 'monkey', 'owl', 'pig'];
+  let animalSet = 0;   // which group of three; each press moves on by three
+  function drawAnimals(animate) {
+    ['r', 'g', 'b'].forEach((ch, i) => {
+      const name = ORDER[(animalSet * 3 + i) % ORDER.length];
+      const u = units[ch];
+      u.knob.querySelector('.dial').innerHTML = `<svg viewBox="-60 -60 120 120" aria-hidden="true">${ANIMALS[name]()}</svg>`;
+      u.knob.setAttribute('aria-label', `${{ r: 'Red', g: 'Green', b: 'Blue' }[ch]} ${name}`);
+      if (animate) {
+        const pop = u.knob.querySelector('.pop');
+        pop.classList.remove('swap'); void pop.offsetWidth; pop.classList.add('swap');
+      }
+    });
+  }
+
+  // ---- sound ----
+  let actx = null, soundOn = true, lastTickAt = 0, lastTickVal = { r: -99, g: -99, b: -99 };
+  function audio() {
+    if (!soundOn) return null;
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+      return actx;
+    } catch (e) { return null; }
+  }
+  function blip(ch, v, long) {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = 'sine';
+    o.frequency.value = PITCH[ch] * Math.pow(2, v / 255);   // rises an octave as it gets brighter
+    const dur = long ? 0.22 : 0.06;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(long ? 0.18 : 0.08, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function tickSound(ch, v) {
+    const now = performance.now();
+    if (Math.abs(v - lastTickVal[ch]) >= 12 && now - lastTickAt > 45) {
+      lastTickVal[ch] = v; lastTickAt = now;
+      blip(ch, v, false);
+    }
+  }
+
+  // ---- state → screen ----
+  function render(ch) {
+    const v = Math.round(vals[ch]);
+    const u = units[ch];
+    u.knob.querySelector('.dial').style.setProperty('--a', (MIN_A + SPAN * v / 255) + 'deg');
+    u.knob.setAttribute('aria-valuenow', v);
+    const rgb = ch === 'r' ? `${v},0,0` : ch === 'g' ? `0,${v},0` : `0,0,${v}`;
+    u.light.style.setProperty('--lit', `rgb(${rgb})`);
+    u.light.style.setProperty('--glow', `rgba(${ch === 'r' ? '255,40,40' : ch === 'g' ? '40,255,80' : '60,110,255'},${(v / 255) * 0.9})`);
+    u.light.style.setProperty('--p', (v / 255).toFixed(3));
+    document.body.style.backgroundColor = `rgb(${Math.round(vals.r)},${Math.round(vals.g)},${Math.round(vals.b)})`;
+  }
+  function set(ch, v, sound = true) {
+    v = Math.max(0, Math.min(255, v));
+    if (v === vals[ch]) return;
+    vals[ch] = v;
+    render(ch);
+    if (sound) tickSound(ch, v);
+  }
+
+  // ---- tap & drag ----
+  Object.entries(units).forEach(([ch, u]) => {
+    const k = u.knob;
+    k.addEventListener('pointerdown', e => {
+      if (u.drag) return;
+      e.preventDefault();
+      audio();
+      k.setPointerCapture(e.pointerId);
+      u.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
+    });
+    k.addEventListener('pointermove', e => {
+      const d = u.drag;
+      if (!d || d.id !== e.pointerId) return;
+      if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 8) {
+        d.moved = true;
+        k.classList.add('dragging');
+      }
+      if (!d.moved) return;
+      // Drag up (or right) to brighten, down (or left) to darken.
+      // A drag of about one and a half knob-heights covers the whole range.
+      const move = (d.ly - e.clientY) + (e.clientX - d.lx);
+      d.lx = e.clientX; d.ly = e.clientY;
+      set(ch, vals[ch] + move / (k.offsetHeight * 1.5) * 255);
+    });
+    const end = e => {
+      const d = u.drag;
+      if (!d || d.id !== e.pointerId) return;
+      u.drag = null;
+      k.classList.remove('dragging');
+      if (!d.moved && e.type === 'pointerup') {
+        const next = vals[ch] >= 254.5 ? 0 : Math.min(255, (Math.floor(vals[ch] / TAP_STEP) + 1) * TAP_STEP);
+        set(ch, next, false);
+        blip(ch, next, true);
+      }
+    };
+    k.addEventListener('pointerup', end);
+    k.addEventListener('pointercancel', end);
+    k.addEventListener('contextmenu', e => e.preventDefault());
+
+    k.addEventListener('keydown', e => {
+      const up = ['ArrowUp', 'ArrowRight'].includes(e.key), down = ['ArrowDown', 'ArrowLeft'].includes(e.key);
+      if (up || down) { e.preventDefault(); set(ch, vals[ch] + (up ? KEY_STEP : -KEY_STEP)); }
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); const n = vals[ch] >= 254.5 ? 0 : Math.min(255, (Math.floor(vals[ch] / TAP_STEP) + 1) * TAP_STEP); set(ch, n, false); blip(ch, n, true); }
+    });
+  });
+
+  // ---- two-finger swipe (trackpad / mouse wheel) ----
+  // Goes to whichever knob is nearest the pointer, so a near miss still works.
+  function nearest(x, y) {
+    let best = null, bestD = Infinity;
+    for (const [ch, u] of Object.entries(units)) {
+      const r = u.knob.getBoundingClientRect();
+      const d = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2));
+      if (d < bestD) { bestD = d; best = ch; }
+    }
+    return best;
+  }
+  window.addEventListener('wheel', e => {
+    e.preventDefault();               // stops page scroll, pinch zoom and swipe-back navigation
+    if (e.ctrlKey) return;            // pinch gesture: ignore
+    const mult = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+    const amt = (e.deltaY - e.deltaX) * mult * WHEEL_SENS;
+    const ch = nearest(e.clientX, e.clientY);
+    if (ch) set(ch, vals[ch] + amt);
+  }, { passive: false });
+
+  ['gesturestart', 'gesturechange', 'dblclick'].forEach(t =>
+    document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+
+  // ---- corner buttons ----
+  document.getElementById('animals').addEventListener('click', () => {
+    animalSet = (animalSet + 1) % ORDER.length;
+    drawAnimals(true);
+    const a = audio();
+    if (a) [0, 1, 2].forEach(i => setTimeout(() => blip('rgb'[i], 120 + i * 60, true), i * 90));
+  });
+  const soundBtn = document.getElementById('sound');
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn;
+    soundBtn.setAttribute('aria-pressed', String(soundOn));
+    try { localStorage.setItem('colourKnobsSound', soundOn ? '1' : '0'); } catch (e) {}
+  });
+  try { if (localStorage.getItem('colourKnobsSound') === '0') { soundOn = false; soundBtn.setAttribute('aria-pressed', 'false'); } } catch (e) {}
+
+  const fullBtn = document.getElementById('full');
+  const canFull = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+  if (!canFull) fullBtn.hidden = true;
+  fullBtn.addEventListener('click', () => {
+    const d = document, el = d.documentElement;
+    try {
+      if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+      else { const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el); if (p && p.catch) p.catch(() => {}); }
+    } catch (e) {}
+  });
+
+  // ---- boot ----
+  function start(data) {
+    const init = Object.assign({ r: 200, g: 60, b: 170, animalSet: 0 }, data || {});
+    animalSet = init.animalSet;
+    drawAnimals(false);
+    for (const ch of ['r', 'g', 'b']) { vals[ch] = -1; set(ch, init[ch], false); }
+  }
+  window.claude?.hot?.snapshot?.(() => ({ ...vals, animalSet }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body>
+</html>
