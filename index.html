@@ -14,6 +14,7 @@
   :root {
     --knob-body: #26252b;
     --knob-ridge: #34333b;
+    --knob-base: #9c9ea6;
     --knob-cap-hi: #5a5966;
     --knob-cap-lo: #1c1b21;
     --ink: #ffffff;
@@ -140,7 +141,7 @@
     border-radius: 50%;
     background:
       radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.4), transparent 60%),
-      var(--c);
+      var(--knob-base);
     box-shadow:
       0 calc(var(--k) * 0.05) calc(var(--k) * 0.1) var(--shade),
       inset 0 calc(var(--k) * -0.04) calc(var(--k) * 0.06) rgba(0, 0, 0, 0.3);
@@ -225,9 +226,6 @@
   <button id="sound" type="button" aria-label="Sound" aria-pressed="true">
     <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg>
     <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
-  </button>
-  <button id="full" type="button" aria-label="Full screen">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
   </button>
 </div>
 
@@ -344,13 +342,14 @@
         cheeks(25, 8, '#ff6f91') + smile(27, 6, '#b8506a');
     },
   };
+  const POINTER = `<path d="M-8 -50 L8 -50 L0 -68Z" fill="#fff" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
   const ORDER = ['tiger', 'elephant', 'penguin', 'giraffe', 'lion', 'panda', 'frog', 'monkey', 'owl', 'pig'];
   let animalSet = 0;   // which group of three; each press moves on by three
   function drawAnimals(animate) {
     ['r', 'g', 'b'].forEach((ch, i) => {
       const name = ORDER[(animalSet * 3 + i) % ORDER.length];
       const u = units[ch];
-      u.knob.querySelector('.dial').innerHTML = `<svg viewBox="-60 -60 120 120" aria-hidden="true">${ANIMALS[name]()}</svg>`;
+      u.knob.querySelector('.dial').innerHTML = `<svg viewBox="-60 -60 120 120" aria-hidden="true">${ANIMALS[name]()}${POINTER}</svg>`;
       u.knob.setAttribute('aria-label', `${{ r: 'Red', g: 'Green', b: 'Blue' }[ch]} ${name}`);
       if (animate) {
         const pop = u.knob.querySelector('.pop');
@@ -369,6 +368,22 @@
       return actx;
     } catch (e) { return null; }
   }
+  // iPhone Safari only starts audio from a touch that has ended, so unlock it then
+  // with a silent sound. The 'playback' session lets it play with the silent switch on.
+  const UNLOCK_EVENTS = ['touchend', 'pointerup', 'click', 'keydown'];
+  function unlockAudio() {
+    if (!soundOn) return;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    const a = audio(); if (!a) return;
+    try {
+      const src = a.createBufferSource();
+      src.buffer = a.createBuffer(1, 1, 22050);
+      src.connect(a.destination);
+      src.start(0);
+    } catch (e) {}
+    if (a.state === 'running') UNLOCK_EVENTS.forEach(t => document.removeEventListener(t, unlockAudio, true));
+  }
+  UNLOCK_EVENTS.forEach(t => document.addEventListener(t, unlockAudio, true));
   function blip(ch, v, long) {
     const a = audio(); if (!a) return;
     const t = a.currentTime;
@@ -429,10 +444,10 @@
       }
       if (!d.moved) return;
       // Drag up (or right) to brighten, down (or left) to darken.
-      // A drag of about one and a half knob-heights covers the whole range.
+      // A drag of about two and a quarter knob-heights covers the whole range.
       const move = (d.ly - e.clientY) + (e.clientX - d.lx);
       d.lx = e.clientX; d.ly = e.clientY;
-      set(ch, vals[ch] + move / (k.offsetHeight * 1.5) * 255);
+      set(ch, vals[ch] + move / (k.offsetHeight * 2.25) * 255);
     });
     const end = e => {
       const d = u.drag;
@@ -494,16 +509,6 @@
   });
   try { if (localStorage.getItem('colourKnobsSound') === '0') { soundOn = false; soundBtn.setAttribute('aria-pressed', 'false'); } } catch (e) {}
 
-  const fullBtn = document.getElementById('full');
-  const canFull = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
-  if (!canFull) fullBtn.hidden = true;
-  fullBtn.addEventListener('click', () => {
-    const d = document, el = d.documentElement;
-    try {
-      if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
-      else { const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el); if (p && p.catch) p.catch(() => {}); }
-    } catch (e) {}
-  });
 
   // ---- boot ----
   function start(data) {
