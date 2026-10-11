@@ -45,7 +45,7 @@
   .tri {
     --W: min(100vw, 100vh);
     --H: min(100vh, calc(var(--W) * 1.5));
-    --k: min(calc(var(--W) * 0.3), calc(var(--H) * 0.25));
+    --k: min(calc(var(--W) * 0.37), calc(var(--H) * 0.325));
     position: relative;
     width: var(--W);
     height: var(--H);
@@ -64,19 +64,19 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: calc(var(--k) * 0.12);
+    gap: calc(var(--k) * 0.08);
   }
   .unit[data-ch="r"] { --x: 50%; --y: 27%; --c: #ff2b2b; }
-  .unit[data-ch="g"] { --x: 23%; --y: 72%; --c: #1fd34a; }
-  .unit[data-ch="b"] { --x: 77%; --y: 72%; --c: #2f6bff; }
+  .unit[data-ch="g"] { --x: 25%; --y: 72%; --c: #1fd34a; }
+  .unit[data-ch="b"] { --x: 75%; --y: 72%; --c: #2f6bff; }
 
   /* The lamp: a glass bulb lit with the channel's exact value, e.g. rgb(v,0,0) */
   .lamp {
-    width: calc(var(--k) * 0.36);
-    height: calc(var(--k) * 0.36);
+    width: calc(var(--k) * 0.194);
+    height: calc(var(--k) * 0.194);
     border-radius: 50%;
     background: #000;
-    box-shadow: 0 0 0 calc(var(--k) * 0.035) var(--knob-body), 0 calc(var(--k) * 0.03) calc(var(--k) * 0.08) var(--shade);
+    box-shadow: 0 0 0 calc(var(--k) * 0.02) var(--knob-body), 0 calc(var(--k) * 0.016) calc(var(--k) * 0.043) var(--shade);
     position: relative;
   }
   .lamp .light {
@@ -84,7 +84,7 @@
     inset: 0;
     border-radius: 50%;
     background: var(--lit, #000);
-    box-shadow: 0 0 calc(var(--k) * 0.35 * var(--p, 0)) calc(var(--k) * 0.08 * var(--p, 0)) var(--glow, transparent);
+    box-shadow: 0 0 calc(var(--k) * 0.19 * var(--p, 0)) calc(var(--k) * 0.043 * var(--p, 0)) var(--glow, transparent);
     transition: background-color 90ms linear, box-shadow 90ms linear;
   }
   .lamp::after {
@@ -341,9 +341,67 @@
         `<ellipse cy="10" rx="16" ry="12" fill="#f28aa3"/><ellipse cx="-5" cy="10" rx="3" ry="4.5" fill="#b8506a"/><ellipse cx="5" cy="10" rx="3" ry="4.5" fill="#b8506a"/>` +
         cheeks(25, 8, '#ff6f91') + smile(27, 6, '#b8506a');
     },
+    hippo: () => {
+      const h = '#a99bc4', m = '#c6bbdd', d = '#6e5f8f';
+      return mirror(`<circle cx="-24" cy="-30" r="8" fill="${h}"/><circle cx="-24" cy="-30" r="4" fill="#f2a5bb"/>`) +
+        `<ellipse cy="-8" rx="31" ry="28" fill="${h}"/>` +
+        `<ellipse cy="16" rx="39" ry="25" fill="${m}"/>` +
+        `<ellipse cx="-13" cy="8" rx="4" ry="5.5" fill="${d}"/><ellipse cx="13" cy="8" rx="4" ry="5.5" fill="${d}"/>` +
+        `<path d="M-18 24 Q0 36 18 24" fill="none" stroke="${d}" stroke-width="2.6" stroke-linecap="round"/>` +
+        `<rect x="-11" y="26" width="6" height="7" rx="1.5" fill="#fff"/><rect x="5" y="26" width="6" height="7" rx="1.5" fill="#fff"/>` +
+        eyes(13, -17, 6.5) + cheeks(28, 10);
+    },
+    puffin: () =>
+      `<circle r="37" fill="#1f2128"/>` +
+      `<ellipse cy="2" rx="27" ry="23" fill="#fff"/>` +
+      eyes(12, -6, 6) +
+      mirror(`<path d="M-18 -9 L-13 -14" stroke="#8e98a6" stroke-width="2" stroke-linecap="round"/>`) +
+      `<path d="M-13 6 L13 6 L0 32Z" fill="#ff6a1a" stroke="#d94e0c" stroke-width="1.5" stroke-linejoin="round"/>` +
+      `<path d="M-13 6 L13 6 L10 12 L-10 12Z" fill="#5f7086"/>` +
+      `<path d="M-10 12.5 L10 12.5" stroke="#ffd23f" stroke-width="2.5" stroke-linecap="round"/>` +
+      `<path d="M-5.5 20 L5.5 20" stroke="#d94e0c" stroke-width="2" stroke-linecap="round"/>` +
+      cheeks(21, 12),
+    dog: () => {
+      const f = '#c98b55', e = '#7a4b2a';
+      return `<circle r="33" fill="${f}"/>` +
+        mirror(`<ellipse cx="-31" cy="0" rx="11" ry="23" fill="${e}" transform="rotate(18 -31 0)"/>`) +
+        `<ellipse cx="13" cy="-9" rx="10" ry="9" fill="${e}" opacity=".55"/>` +
+        `<ellipse cy="14" rx="18" ry="13" fill="#f3dcc0"/>` +
+        eyes(12, -8, 6.5) +
+        `<path d="M-4 22 Q-4 33 0 33 Q4 33 4 22Z" fill="#ff7d95"/>` +
+        `<ellipse cy="7" rx="7" ry="5" fill="${INK}"/>` + smile(19, 6);
+    },
+    cat: () => {
+      const g = '#9aa3ad';
+      return mirror(`<path d="M-33 -10 L-30 -45 L-7 -31Z" fill="${g}"/><path d="M-27 -17 L-26 -37 L-13 -30Z" fill="#f6b6c6"/>`) +
+        `<ellipse cy="2" rx="37" ry="32" fill="${g}"/>` +
+        `<path d="M-6 -30 L-4 -20 M0 -31 L0 -20 M6 -30 L4 -20" stroke="#7a838e" stroke-width="2.4" stroke-linecap="round"/>` +
+        eyes(13, -5, 7) +
+        `<path d="M-4.5 7 L4.5 7 L0 12Z" fill="#ff8fa8"/>` + smile(14, 6) +
+        mirror(`<path d="M-15 11 L-38 7 M-15 15 L-38 17" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`) + cheeks(22, 10);
+    },
+    mouse: () => {
+      const g = '#b4b4c0';
+      return mirror(`<circle cx="-27" cy="-26" r="18" fill="${g}"/><circle cx="-27" cy="-26" r="11" fill="#f6b6c6"/>`) +
+        `<circle cy="4" r="30" fill="${g}"/>` +
+        eyes(11, -3, 6) +
+        `<circle cy="12" r="4.5" fill="#ff8fa8"/>` + smile(17, 5) +
+        `<rect x="-3" y="19" width="6" height="5" rx="1" fill="#fff"/>` +
+        mirror(`<path d="M-10 12 L-34 8 M-10 15 L-34 18" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>`) + cheeks(19, 12);
+    },
+    dolphin: () => {
+      const b = '#5fa8d9';
+      return `<path d="M-8 -30 Q2 -54 16 -48 Q8 -40 10 -28Z" fill="#4a90c2"/>` +
+        `<circle r="34" fill="${b}"/>` +
+        `<ellipse cx="4" cy="18" rx="27" ry="14" fill="#d3ebf8"/>` +
+        `<ellipse cx="30" cy="10" rx="17" ry="9" fill="${b}"/>` +
+        `<path d="M16 14 Q30 19 45 11" fill="none" stroke="#2f6f9e" stroke-width="2.4" stroke-linecap="round"/>` +
+        eye(10, -6, 7) + `<circle cx="-4" cy="-20" r="2.5" fill="#2f6f9e"/>` +
+        `<circle cx="10" cy="8" r="5" fill="#ff8fa8" opacity=".55"/>`;
+    },
   };
   const POINTER = `<path d="M-8 -50 L8 -50 L0 -68Z" fill="#fff" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
-  const ORDER = ['tiger', 'elephant', 'penguin', 'giraffe', 'lion', 'panda', 'frog', 'monkey', 'owl', 'pig'];
+  const ORDER = ['tiger', 'elephant', 'penguin', 'giraffe', 'lion', 'panda', 'frog', 'monkey', 'owl', 'pig', 'hippo', 'puffin', 'dog', 'cat', 'mouse', 'dolphin'];
   let animalSet = 0;   // which group of three; each press moves on by three
   function drawAnimals(animate) {
     ['r', 'g', 'b'].forEach((ch, i) => {
