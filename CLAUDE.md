@@ -6,7 +6,7 @@ A toy for a 3-year-old: three animal knobs (red, green, blue) that mix the backg
 
 - **Live:** https://signalrecordsuk.github.io/colour-knobs/ (GitHub Pages, branch `main`, path `/`).
 - **Repo:** `signalrecordsuk/colour-knobs`. Pushing to `main` redeploys in about a minute.
-- **The GitHub page is the only target.** There is no claude.ai artifact to keep in sync.
+- **The GitHub page is the only target.** The old claude.ai artifact has been deleted; don't make a new one.
 - **Played mainly in Safari on an iPhone.** Test changes with touch input in mind.
 
 ## Code
@@ -15,14 +15,15 @@ A toy for a 3-year-old: three animal knobs (red, green, blue) that mix the backg
 - **Knobs:**
   - Each value runs 0–255 and maps to -135°..+135°, set through the CSS var `--a` on `.dial`.
   - A tap steps the value by 51 and wraps back to 0.
-  - A vertical drag over 2.25× the knob height covers the full range.
+  - Dragging turns the knob round like a real knob: the animal follows the finger's angle around the centre, clockwise to brighten. Movement within 0.12× the knob size of the centre is ignored.
+  - While turning, `body.turning` turns off the colour transitions so the background and lights follow live.
   - A wheel or two-finger swipe turns the nearest knob.
 - **Animals:**
   - Each animal is inline SVG in the `ANIMALS` map, drawn in the viewBox `-60 -60 120 120`.
   - The shared helpers are `eye`, `eyes`, `cheeks`, `smile` and `mirror`.
   - The `POINTER` is added to every animal automatically.
-- **Adding an animal:** put it in both `ANIMALS` and `ORDER`. The paw button moves on one place in `ORDER` and shows three animals at a time. Update the animal count in `README.md` too.
-- **Layout:** sized by `--k` (knob size) on `.tri`, which is derived from the viewport.
+- **Groups:** `GROUPS` holds themed groups of three (red, green, blue knob in that order). The paw button moves to the next group. A new animal goes in `ANIMALS` and in a group of three; list any new group in `README.md`.
+- **Layout:** `.tri` is a square sized by the screen's short side (`--S`), with knob size `--k` = 0.34 × `--S`, so the knobs don't move when the phone rotates. Keep it orientation-independent.
 - **Sound:**
   - Uses WebAudio.
   - On iPhone it is unlocked by the first touch, which plays a silent buffer and sets `navigator.audioSession.type = 'playback'`.

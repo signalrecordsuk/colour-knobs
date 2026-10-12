@@ -42,19 +42,16 @@
     display: grid;
     place-items: center;
   }
+  /* A square sized by the screen's short side, so the knobs sit the same way in portrait and landscape */
   .tri {
-    --W: min(100vw, 100vh);
-    --H: min(100vh, calc(var(--W) * 1.5));
-    --k: min(calc(var(--W) * 0.37), calc(var(--H) * 0.325));
+    --S: min(100vw, 100vh);
+    --k: calc(var(--S) * 0.34);
     position: relative;
-    width: var(--W);
-    height: var(--H);
+    width: var(--S);
+    height: var(--S);
   }
-  @supports (height: 100dvh) {
-    .tri {
-      --W: min(100vw, 100dvh);
-      --H: min(100dvh, calc(var(--W) * 1.5));
-    }
+  @supports (height: 100svh) {
+    .tri { --S: min(100vw, 100svh); }
   }
   .unit {
     position: absolute;
@@ -163,7 +160,9 @@
     transition: transform 160ms cubic-bezier(.3, 1.4, .5, 1);
   }
   .dial svg { display: block; width: 100%; height: 100%; overflow: visible; }
-  .knob.dragging .dial { transition: none; }
+  .knob.dragging .dial,
+  body.turning,
+  body.turning .lamp .light { transition: none; }
 
   .corner {
     position: fixed;
@@ -399,13 +398,87 @@
         eye(10, -6, 7) + `<circle cx="-4" cy="-20" r="2.5" fill="#2f6f9e"/>` +
         `<circle cx="10" cy="8" r="5" fill="#ff8fa8" opacity=".55"/>`;
     },
+    cow: () => {
+      const w = '#fbfbf8', m = '#f7b7c3', d = '#c4677d';
+      return mirror(`<path d="M-18 -28 Q-28 -44 -17 -50" fill="none" stroke="#e9d9a8" stroke-width="7" stroke-linecap="round"/>` +
+          `<ellipse cx="-36" cy="-16" rx="14" ry="7" fill="${w}" stroke="#d6d6de" stroke-width="1.5" transform="rotate(20 -36 -16)"/><ellipse cx="-36" cy="-16" rx="8" ry="3.5" fill="${m}" transform="rotate(20 -36 -16)"/>`) +
+        `<ellipse cy="-4" rx="31" ry="34" fill="${w}" stroke="#d6d6de" stroke-width="1.5"/>` +
+        `<path d="M6 -37 Q27 -35 29 -13 Q19 -6 12 -16 Q3 -23 6 -37Z M-29 -2 Q-22 -10 -16 -2 Q-20 8 -28 6Z" fill="${INK}"/>` +
+        `<ellipse cy="18" rx="27" ry="17" fill="${m}"/>` +
+        `<ellipse cx="-9" cy="16" rx="4" ry="5" fill="${d}"/><ellipse cx="9" cy="16" rx="4" ry="5" fill="${d}"/>` +
+        eyes(13, -11, 6.5) + smile(27, 6, d);
+    },
+    sheep: () => {
+      const w = '#f4f1ea', f = '#4a4048';
+      let wool = '';
+      for (let i = 0; i < 10; i++) {
+        const a = i / 10 * Math.PI * 2;
+        wool += `<circle cx="${(Math.cos(a) * 30).toFixed(1)}" cy="${(Math.sin(a) * 30 - 4).toFixed(1)}" r="14" fill="${w}"/>`;
+      }
+      return wool + `<circle cy="-4" r="31" fill="${w}"/>` +
+        mirror(`<ellipse cx="-27" cy="0" rx="13" ry="6" fill="${f}" transform="rotate(25 -27 0)"/>`) +
+        `<ellipse cy="8" rx="19" ry="24" fill="${f}"/>` +
+        `<circle cx="-8" cy="-15" r="8" fill="${w}"/><circle cx="8" cy="-15" r="8" fill="${w}"/><circle cy="-19" r="8" fill="${w}"/>` +
+        eyes(8, 1, 5.5) +
+        `<ellipse cx="-4" cy="17" rx="2" ry="1.5" fill="#1b1b1f"/><ellipse cx="4" cy="17" rx="2" ry="1.5" fill="#1b1b1f"/>` +
+        smile(23, 5, '#f4b6c6');
+    },
+    trex: () => {
+      const g = '#6cc04a', d = '#4a9a32';
+      return `<path d="M-16 -34 L-11 -45 L-5 -36 L0 -47 L5 -36 L11 -45 L16 -34Z" fill="${d}"/>` +
+        `<ellipse cy="-8" rx="33" ry="30" fill="${g}"/>` +
+        `<ellipse cy="14" rx="39" ry="22" fill="${g}"/>` +
+        `<circle cx="-22" cy="-20" r="4" fill="${d}"/><circle cx="24" cy="-14" r="5" fill="${d}"/><circle cx="-28" cy="-6" r="3" fill="${d}"/>` +
+        mirror(`<path d="M-23 -25 L-9 -21" stroke="${d}" stroke-width="4" stroke-linecap="round"/>`) +
+        eyes(16, -13, 6.5) +
+        `<circle cx="-6" cy="2" r="2" fill="${d}"/><circle cx="6" cy="2" r="2" fill="${d}"/>` +
+        `<path d="M-27 10 Q0 40 27 10Z" fill="#8a2f3a"/>` +
+        `<path d="M-21 10 L-17 17 L-13 10 M-7 10 L-3 17 L1 10 M7 10 L11 17 L15 10" fill="#fff"/>` +
+        `<path d="M-27 10 L27 10" stroke="${d}" stroke-width="2.5" stroke-linecap="round"/>` +
+        cheeks(31, 4);
+    },
+    triceratops: () => {
+      const o = '#f2a03d', f = '#e0703a';
+      let frill = '';
+      for (let i = 0; i <= 8; i++) {
+        const a = Math.PI * (1 + i / 8);
+        frill += `<circle cx="${(Math.cos(a) * 40).toFixed(1)}" cy="${(Math.sin(a) * 40 - 2).toFixed(1)}" r="9" fill="${f}"/>`;
+      }
+      return frill + `<path d="M-40 -2 A40 40 0 0 1 40 -2Z" fill="${f}"/>` +
+        `<circle cx="-27" cy="-24" r="4" fill="#ffd27a"/><circle cx="27" cy="-24" r="4" fill="#ffd27a"/><circle cx="0" cy="-36" r="4" fill="#ffd27a"/>` +
+        `<ellipse cy="6" rx="29" ry="31" fill="${o}"/>` +
+        mirror(`<path d="M-17 -15 L-25 -46 L-7 -20Z" fill="#fff4dc" stroke="#d9b98a" stroke-width="1.5" stroke-linejoin="round"/>`) +
+        eyes(12, -5, 6) +
+        `<path d="M-5 16 L0 3 L5 16Z" fill="#fff4dc" stroke="#d9b98a" stroke-width="1.5" stroke-linejoin="round"/>` +
+        `<circle cx="-6" cy="20" r="1.8" fill="#a0522d"/><circle cx="6" cy="20" r="1.8" fill="#a0522d"/>` +
+        smile(27, 8, '#a0522d') + cheeks(21, 15);
+    },
+    brachiosaurus: () => {
+      const b = '#62b6c9', d = '#4592a5';
+      return `<path d="M-17 4 L-15 50 Q0 60 15 50 L17 4Z" fill="${b}"/>` +
+        `<circle cx="-5" cy="30" r="4" fill="${d}"/><circle cx="6" cy="42" r="5" fill="${d}"/><circle cx="-7" cy="49" r="3" fill="${d}"/>` +
+        `<ellipse cy="-30" rx="15" ry="13" fill="${b}"/>` +
+        `<ellipse cy="-6" rx="33" ry="26" fill="${b}"/>` +
+        `<circle cx="-5" cy="-33" r="2.2" fill="${d}"/><circle cx="5" cy="-33" r="2.2" fill="${d}"/>` +
+        `<circle cx="-24" cy="-16" r="3" fill="${d}"/><circle cx="25" cy="-20" r="4" fill="${d}"/>` +
+        eyes(15, -10, 6.5) + smile(8, 10) + cheeks(24, 4);
+    },
   };
   const POINTER = `<path d="M-8 -50 L8 -50 L0 -68Z" fill="#fff" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
-  const ORDER = ['tiger', 'elephant', 'penguin', 'giraffe', 'lion', 'panda', 'frog', 'monkey', 'owl', 'pig', 'hippo', 'puffin', 'dog', 'cat', 'mouse', 'dolphin'];
-  let animalSet = 0;   // which group of three; each press moves on by three
+  // Each group of three goes on the red, green and blue knobs in that order.
+  const GROUPS = [
+    ['tiger', 'monkey', 'elephant'],                 // jungle
+    ['lion', 'giraffe', 'hippo'],                    // safari
+    ['puffin', 'penguin', 'dolphin'],                // sea
+    ['pig', 'cow', 'sheep'],                         // farm
+    ['dog', 'cat', 'mouse'],                         // pets
+    ['owl', 'frog', 'panda'],                        // forest
+    ['triceratops', 'trex', 'brachiosaurus'],        // dinosaurs
+  ];
+  let animalSet = 0;   // which group; each press of the paw moves on one group
   function drawAnimals(animate) {
     ['r', 'g', 'b'].forEach((ch, i) => {
-      const name = ORDER[(animalSet * 3 + i) % ORDER.length];
+      const name = GROUPS[animalSet][i];
       const u = units[ch];
       u.knob.querySelector('.dial').innerHTML = `<svg viewBox="-60 -60 120 120" aria-hidden="true">${ANIMALS[name]()}${POINTER}</svg>`;
       u.knob.setAttribute('aria-label', `${{ r: 'Red', g: 'Green', b: 'Blue' }[ch]} ${name}`);
@@ -483,7 +556,9 @@
     if (sound) tickSound(ch, v);
   }
 
-  // ---- tap & drag ----
+  // ---- tap & turn ----
+  // Angle of the pointer around a knob's centre: 0° straight up, clockwise positive.
+  const angleAt = (cx, cy, e) => Math.atan2(e.clientX - cx, cy - e.clientY) * 180 / Math.PI;
   Object.entries(units).forEach(([ch, u]) => {
     const k = u.knob;
     k.addEventListener('pointerdown', e => {
@@ -491,7 +566,9 @@
       e.preventDefault();
       audio();
       k.setPointerCapture(e.pointerId);
-      u.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
+      const r = k.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      u.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, cx, cy, ang: angleAt(cx, cy, e), moved: false };
     });
     k.addEventListener('pointermove', e => {
       const d = u.drag;
@@ -499,19 +576,25 @@
       if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 8) {
         d.moved = true;
         k.classList.add('dragging');
+        document.body.classList.add('turning');
       }
       if (!d.moved) return;
-      // Drag up (or right) to brighten, down (or left) to darken.
-      // A drag of about two and a quarter knob-heights covers the whole range.
-      const move = (d.ly - e.clientY) + (e.clientX - d.lx);
-      d.lx = e.clientX; d.ly = e.clientY;
-      set(ch, vals[ch] + move / (k.offsetHeight * 2.25) * 255);
+      // Turn it like a real knob: the animal follows the finger round, clockwise to brighten.
+      // Right over the middle the angle jumps about, so ignore movement there.
+      if (Math.hypot(e.clientX - d.cx, e.clientY - d.cy) < k.offsetWidth * 0.12) return;
+      const ang = angleAt(d.cx, d.cy, e);
+      let turn = ang - d.ang;
+      if (turn > 180) turn -= 360;
+      if (turn < -180) turn += 360;
+      d.ang = ang;
+      set(ch, vals[ch] + turn / SPAN * 255);
     });
     const end = e => {
       const d = u.drag;
       if (!d || d.id !== e.pointerId) return;
       u.drag = null;
       k.classList.remove('dragging');
+      if (!Object.values(units).some(o => o.drag)) document.body.classList.remove('turning');
       if (!d.moved && e.type === 'pointerup') {
         const next = vals[ch] >= 254.5 ? 0 : Math.min(255, (Math.floor(vals[ch] / TAP_STEP) + 1) * TAP_STEP);
         set(ch, next, false);
@@ -540,13 +623,18 @@
     }
     return best;
   }
+  let wheelTimer = 0;
   window.addEventListener('wheel', e => {
     e.preventDefault();               // stops page scroll, pinch zoom and swipe-back navigation
     if (e.ctrlKey) return;            // pinch gesture: ignore
     const mult = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
     const amt = (e.deltaY - e.deltaX) * mult * WHEEL_SENS;
     const ch = nearest(e.clientX, e.clientY);
-    if (ch) set(ch, vals[ch] + amt);
+    if (!ch) return;
+    document.body.classList.add('turning');
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => { if (!Object.values(units).some(o => o.drag)) document.body.classList.remove('turning'); }, 200);
+    set(ch, vals[ch] + amt);
   }, { passive: false });
 
   ['gesturestart', 'gesturechange', 'dblclick'].forEach(t =>
@@ -554,7 +642,7 @@
 
   // ---- corner buttons ----
   document.getElementById('animals').addEventListener('click', () => {
-    animalSet = (animalSet + 1) % ORDER.length;
+    animalSet = (animalSet + 1) % GROUPS.length;
     drawAnimals(true);
     const a = audio();
     if (a) [0, 1, 2].forEach(i => setTimeout(() => blip('rgb'[i], 120 + i * 60, true), i * 90));
@@ -571,7 +659,7 @@
   // ---- boot ----
   function start(data) {
     const init = Object.assign({ r: 200, g: 60, b: 170, animalSet: 0 }, data || {});
-    animalSet = init.animalSet;
+    animalSet = (init.animalSet | 0) % GROUPS.length;
     drawAnimals(false);
     for (const ch of ['r', 'g', 'b']) { vals[ch] = -1; set(ch, init[ch], false); }
   }
