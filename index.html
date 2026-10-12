@@ -10,7 +10,7 @@
 <body style="margin:0">
 <title>Colour Knobs</title>
 <style>
-  /* Layout: one full-screen colour field; three toy-synth knobs sit on the corners of a triangle, each with its own lamp. */
+  /* Layout: one full-screen colour field; three toy-synth knobs zigzag down the screen (left, right, left), each with its lamp on its inner side. */
   :root {
     --knob-body: #26252b;
     --knob-ridge: #34333b;
@@ -42,30 +42,32 @@
     display: grid;
     place-items: center;
   }
-  /* A square sized by the screen's short side, so the knobs sit the same way in portrait and landscape */
+  /* A fixed-shape box (2.5k wide, 3.38k tall, k = knob size) scaled to fit the screen, so the
+     knobs sit the same way in portrait and landscape. Knob centres are 0.95k apart vertically
+     and 1k apart sideways, which keeps the zigzag from touching. */
   .tri {
-    --S: min(100vw, 100vh);
-    --k: calc(var(--S) * 0.34);
+    --k: min(calc(100vw / 2.5), calc(100vh / 3.38));
     position: relative;
-    width: var(--S);
-    height: var(--S);
+    width: calc(var(--k) * 2.5);
+    height: calc(var(--k) * 3.38);
   }
   @supports (height: 100svh) {
-    .tri { --S: min(100vw, 100svh); }
+    .tri { --k: min(calc(100vw / 2.5), calc(100svh / 3.38)); }
   }
   .unit {
     position: absolute;
-    left: var(--x);
-    top: var(--y);
-    transform: translate(-50%, -50%);
+    top: calc(var(--k) * var(--y));
+    transform: translateY(-50%);
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: calc(var(--k) * 0.08);
+    gap: calc(var(--k) * 0.12);
   }
-  .unit[data-ch="r"] { --x: 50%; --y: 27%; --c: #ff2b2b; }
-  .unit[data-ch="g"] { --x: 25%; --y: 72%; --c: #1fd34a; }
-  .unit[data-ch="b"] { --x: 75%; --y: 72%; --c: #2f6bff; }
+  /* Left knobs have their lamp on the right; the right knob has its lamp on the left */
+  .unit[data-ch="r"], .unit[data-ch="b"] { left: calc(var(--k) * 0.11); flex-direction: row-reverse; }
+  .unit[data-ch="g"] { right: calc(var(--k) * 0.11); }
+  .unit[data-ch="r"] { --y: 0.74; --c: #ff2b2b; }
+  .unit[data-ch="g"] { --y: 1.69; --c: #1fd34a; }
+  .unit[data-ch="b"] { --y: 2.64; --c: #2f6bff; }
 
   /* The lamp: a glass bulb lit with the channel's exact value, e.g. rgb(v,0,0) */
   .lamp {
@@ -186,7 +188,7 @@
   .corner button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   .corner svg { width: 20px; height: 20px; }
   .corner .off { display: none; }
-  .corner.left { right: auto; left: 12px; }
+  .corner.bottom { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
   .corner #animals { width: 64px; height: 64px; background: var(--ink); color: var(--knob-body); box-shadow: 0 4px 12px var(--shade); }
   .corner #animals svg { width: 36px; height: 36px; }
   .corner #animals:active { transform: scale(0.92); }
@@ -216,12 +218,12 @@
   </div>
 </div>
 
-<div class="corner left">
+<div class="corner">
   <button id="animals" type="button" aria-label="Change animals">
     <svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="16" rx="5" ry="4.2"/><ellipse cx="5.2" cy="10.5" rx="2.2" ry="2.8"/><ellipse cx="9.3" cy="6.3" rx="2.2" ry="2.9"/><ellipse cx="14.7" cy="6.3" rx="2.2" ry="2.9"/><ellipse cx="18.8" cy="10.5" rx="2.2" ry="2.8"/></svg>
   </button>
 </div>
-<div class="corner">
+<div class="corner bottom">
   <button id="sound" type="button" aria-label="Sound" aria-pressed="true">
     <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg>
     <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>

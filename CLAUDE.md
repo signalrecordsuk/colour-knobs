@@ -23,7 +23,8 @@ A toy for a 3-year-old: three animal knobs (red, green, blue) that mix the backg
   - The shared helpers are `eye`, `eyes`, `cheeks`, `smile` and `mirror`.
   - The `POINTER` is added to every animal automatically.
 - **Groups:** `GROUPS` holds themed groups of three (red, green, blue knob in that order). The paw button moves to the next group. A new animal goes in `ANIMALS` and in a group of three; list any new group in `README.md`.
-- **Layout:** `.tri` is a square sized by the screen's short side (`--S`), with knob size `--k` = 0.34 × `--S`, so the knobs don't move when the phone rotates. Keep it orientation-independent.
+- **Layout:** the knobs zigzag down the screen: red top-left, green middle-right, blue bottom-left, each with its lamp on its inner side. `.tri` is a fixed-shape box (2.5k × 3.38k, where `--k` is the knob size) scaled to fit the screen, so nothing moves when the phone rotates; in landscape it's just smaller. Keep it orientation-independent.
+- **Buttons:** the paw button is top-right and the sound button bottom-right, because the left corners are taken by knobs.
 - **Sound:**
   - Uses WebAudio.
   - On iPhone it is unlocked by the first touch, which plays a silent buffer and sets `navigator.audioSession.type = 'playback'`.
