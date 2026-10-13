@@ -138,12 +138,7 @@
     position: absolute;
     inset: 9%;
     border-radius: 50%;
-    background:
-      radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.4), transparent 60%),
-      var(--knob-base);
-    box-shadow:
-      0 calc(var(--k) * 0.05) calc(var(--k) * 0.1) var(--shade),
-      inset 0 calc(var(--k) * -0.04) calc(var(--k) * 0.06) rgba(0, 0, 0, 0.3);
+    background: var(--knob-base);   /* flat, so it vanishes into the page when the colours match */
   }
   .pop {
     position: absolute;
@@ -189,12 +184,12 @@
   .corner svg { width: 20px; height: 20px; }
   .corner .off { display: none; }
   .corner.bottom { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
-  .corner #animals { width: 64px; height: 64px; background: var(--target, var(--ink)); color: var(--target-ink, var(--knob-body)); border: 4px solid #fff; box-shadow: 0 4px 12px var(--shade); transition: background-color 250ms ease; }
+  .corner #animals { width: 64px; height: 64px; background: var(--target, var(--ink)); color: var(--target-ink, var(--knob-body)); transition: background-color 250ms ease; }
   .corner #animals.won { animation: won 900ms cubic-bezier(.3, 1.6, .5, 1); }
   @keyframes won {
-    0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,.9), 0 4px 12px var(--shade); }
+    0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,.9); }
     35%  { transform: scale(1.35) rotate(-12deg); }
-    60%  { transform: scale(1.2) rotate(10deg); box-shadow: 0 0 0 26px rgba(255,255,255,0), 0 4px 12px var(--shade); }
+    60%  { transform: scale(1.2) rotate(10deg); box-shadow: 0 0 0 26px rgba(255,255,255,0); }
     100% { transform: scale(1); }
   }
   .corner #animals svg { width: 36px; height: 36px; }
