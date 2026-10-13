@@ -562,6 +562,7 @@
     while (target && t.r === target.r && t.g === target.g && t.b === target.b || isMatch(t));
     target = t; matched = false;
     animalsBtn.style.setProperty('--target', `rgb(${t.r},${t.g},${t.b})`);
+    document.documentElement.style.setProperty('--knob-base', `rgb(${t.r},${t.g},${t.b})`);   // knobs show it too
     const light = 0.299 * t.r + 0.587 * t.g + 0.114 * t.b > 150;
     animalsBtn.style.setProperty('--target-ink', light ? '#000' : '#fff');
   }

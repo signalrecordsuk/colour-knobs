@@ -24,7 +24,7 @@ A toy for a 3-year-old: three animal knobs (red, green, blue) that mix the backg
   - The `POINTER` is added to every animal automatically.
 - **Groups:** `GROUPS` holds themed groups of three (red, green, blue knob in that order). The paw button moves to the next group. A new animal goes in `ANIMALS` and in a group of three; list any new group in `README.md`.
 - **Layout:** the knobs zigzag down the screen: red top-left, green middle-right, blue bottom-left, each with its lamp on its inner side. `.tri` is a fixed-shape box (2.5k × 3.38k, where `--k` is the knob size) scaled to fit the screen, so nothing moves when the phone rotates; in landscape it's just smaller. Keep it orientation-independent.
-- **Colour to match:** the paw button's background is a random target colour, picked from the tap steps (0, 51 … 255) so taps alone can reach it. A new one is picked at load and on each paw press. When every channel of the page colour is within `MATCH_TOL` (25) of it, the button wiggles, the knobs pop and a rising arpeggio plays, once per target.
+- **Colour to match:** the paw button's background and the knob bases behind the animals are a random target colour, picked from the tap steps (0, 51 … 255) so taps alone can reach it. A new one is picked at load and on each paw press. When every channel of the page colour is within `MATCH_TOL` (25) of it, the button wiggles, the knobs pop and a rising arpeggio plays, once per target.
 - **Buttons:** the paw button is top-right and the sound button bottom-right, because the left corners are taken by knobs.
 - **Sound:**
   - Uses WebAudio.
