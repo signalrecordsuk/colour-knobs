@@ -189,7 +189,14 @@
   .corner svg { width: 20px; height: 20px; }
   .corner .off { display: none; }
   .corner.bottom { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
-  .corner #animals { width: 64px; height: 64px; background: var(--ink); color: var(--knob-body); box-shadow: 0 4px 12px var(--shade); }
+  .corner #animals { width: 64px; height: 64px; background: var(--target, var(--ink)); color: var(--target-ink, var(--knob-body)); border: 4px solid #fff; box-shadow: 0 4px 12px var(--shade); transition: background-color 250ms ease; }
+  .corner #animals.won { animation: won 900ms cubic-bezier(.3, 1.6, .5, 1); }
+  @keyframes won {
+    0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,.9), 0 4px 12px var(--shade); }
+    35%  { transform: scale(1.35) rotate(-12deg); }
+    60%  { transform: scale(1.2) rotate(10deg); box-shadow: 0 0 0 26px rgba(255,255,255,0), 0 4px 12px var(--shade); }
+    100% { transform: scale(1); }
+  }
   .corner #animals svg { width: 36px; height: 36px; }
   .corner #animals:active { transform: scale(0.92); }
   .corner [aria-pressed="false"] .on { display: none; }
@@ -197,7 +204,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     body, .dial, .lamp .light, .knob { transition: none; }
-    .pop.swap { animation: none; }
+    .pop.swap, .corner #animals.won { animation: none; }
   }
 </style>
 
@@ -542,6 +549,33 @@
     }
   }
 
+  // ---- colour to match ----
+  // The paw button shows a colour; turn the knobs until the page matches it.
+  // Targets use the tap steps (0, 51 … 255) so tapping alone can reach them.
+  const MATCH_TOL = 25;          // each channel within this counts as a match
+  const animalsBtn = document.getElementById('animals');
+  let target = null, matched = false;
+  function newTarget() {
+    const step = () => TAP_STEP * Math.floor(Math.random() * 6);
+    let t;
+    do { t = { r: step(), g: step(), b: step() }; }
+    while (target && t.r === target.r && t.g === target.g && t.b === target.b || isMatch(t));
+    target = t; matched = false;
+    animalsBtn.style.setProperty('--target', `rgb(${t.r},${t.g},${t.b})`);
+    const light = 0.299 * t.r + 0.587 * t.g + 0.114 * t.b > 150;
+    animalsBtn.style.setProperty('--target-ink', light ? '#000' : '#fff');
+  }
+  function isMatch(t) {
+    return ['r', 'g', 'b'].every(ch => Math.abs(vals[ch] - t[ch]) <= MATCH_TOL);
+  }
+  function checkMatch() {
+    if (!target || matched || !isMatch(target)) return;
+    matched = true;
+    animalsBtn.classList.remove('won'); void animalsBtn.offsetWidth; animalsBtn.classList.add('won');
+    Object.values(units).forEach(u => { const pop = u.knob.querySelector('.pop'); pop.classList.remove('swap'); void pop.offsetWidth; pop.classList.add('swap'); });
+    if (audio()) [0, 1, 2, 3].forEach(i => setTimeout(() => blip('r', [0, 85, 149, 255][i], true), 200 + i * 110));
+  }
+
   // ---- state → screen ----
   function render(ch) {
     const v = Math.round(vals[ch]);
@@ -560,6 +594,7 @@
     vals[ch] = v;
     render(ch);
     if (sound) tickSound(ch, v);
+    checkMatch();
   }
 
   // ---- tap & turn ----
@@ -647,9 +682,10 @@
     document.addEventListener(t, e => e.preventDefault(), { passive: false }));
 
   // ---- corner buttons ----
-  document.getElementById('animals').addEventListener('click', () => {
+  animalsBtn.addEventListener('click', () => {
     animalSet = (animalSet + 1) % GROUPS.length;
     drawAnimals(true);
+    newTarget();
     const a = audio();
     if (a) [0, 1, 2].forEach(i => setTimeout(() => blip('rgb'[i], 120 + i * 60, true), i * 90));
   });
@@ -668,6 +704,7 @@
     animalSet = (init.animalSet | 0) % GROUPS.length;
     drawAnimals(false);
     for (const ch of ['r', 'g', 'b']) { vals[ch] = -1; set(ch, init[ch], false); }
+    newTarget();
   }
   window.claude?.hot?.snapshot?.(() => ({ ...vals, animalSet }));
   window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
