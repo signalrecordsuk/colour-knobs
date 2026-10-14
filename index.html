@@ -197,6 +197,8 @@
   .corner [aria-pressed="false"] .on { display: none; }
   .corner [aria-pressed="false"] .off { display: block; }
 
+  #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+
   @media (prefers-reduced-motion: reduce) {
     body, .dial, .lamp .light, .knob { transition: none; }
     .pop.swap, .corner #animals.won { animation: none; }
@@ -225,6 +227,7 @@
     <svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="16" rx="5" ry="4.2"/><ellipse cx="5.2" cy="10.5" rx="2.2" ry="2.8"/><ellipse cx="9.3" cy="6.3" rx="2.2" ry="2.9"/><ellipse cx="14.7" cy="6.3" rx="2.2" ry="2.9"/><ellipse cx="18.8" cy="10.5" rx="2.2" ry="2.8"/></svg>
   </button>
 </div>
+<canvas id="confetti" aria-hidden="true"></canvas>
 <div class="corner bottom">
   <button id="sound" type="button" aria-label="Sound" aria-pressed="true">
     <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg>
@@ -235,24 +238,46 @@
 <script>
 (() => {
   const MIN_A = -135, MAX_A = 135, SPAN = MAX_A - MIN_A;
-  const TAP_STEP = 51;           // 0 → 51 → 102 → 153 → 204 → 255 → back to 0
   const WHEEL_SENS = 0.45;       // value units per pixel of two-finger swipe
-  const KEY_STEP = 8;
+  // Difficulty: easy and medium snap each knob to its stops (6 or 11 across the dial);
+  // hard turns freely and a match must be within 2 on each channel.
+  const LEVELS = {
+    easy:   { stops: 6, tol: 0 },
+    medium: { stops: 11, tol: 0 },
+    hard:   { stops: 0, tol: 2 },
+  };
+  const LEVEL_NAMES = Object.keys(LEVELS);
+  const stopsOf = n => Array.from({ length: n }, (_, i) => Math.round(255 * i / (n - 1)));
+  let level = 'easy';
+  try { const l = localStorage.getItem('colourKnobsLevel'); if (LEVELS[l]) level = l; } catch (e) {}
+  let STOPS = [];      // where knobs snap to; empty on hard
+  let TAP_STOPS = [];  // where a tap steps to; hard taps through the medium stops
   const PITCH = { r: 330, g: 392, b: 494 };
 
   const vals = { r: 0, g: 0, b: 0 };
   const units = {};
   document.querySelectorAll('.unit').forEach(u => {
     const ch = u.dataset.ch;
-    const wrap = u.querySelector('.wrap');
-    for (let i = 0; i <= 10; i++) {
-      const t = document.createElement('div');
-      t.className = 'tick' + (i % 5 === 0 ? ' big' : '');
-      t.style.setProperty('--t', (MIN_A + SPAN * i / 10) + 'deg');
-      wrap.prepend(t);
-    }
-    units[ch] = { el: u, knob: u.querySelector('.knob'), light: u.querySelector('.light'), drag: null };
+    units[ch] = { el: u, wrap: u.querySelector('.wrap'), knob: u.querySelector('.knob'), light: u.querySelector('.light'), drag: null };
   });
+  // One tick per stop (big at the ends and middle); hard shows only the two ends.
+  function drawTicks() {
+    const n = LEVELS[level].stops;
+    STOPS = n ? stopsOf(n) : [];
+    TAP_STOPS = stopsOf(n || 11);
+    const at = n ? STOPS : [0, 255];
+    Object.values(units).forEach(u => {
+      u.wrap.querySelectorAll('.tick').forEach(t => t.remove());
+      at.forEach((v, i) => {
+        const t = document.createElement('div');
+        t.className = 'tick' + (n === 6 || i === 0 || i === at.length - 1 || 2 * i === at.length - 1 ? ' big' : '');
+        t.style.setProperty('--t', (MIN_A + SPAN * v / 255) + 'deg');
+        u.wrap.prepend(t);
+      });
+    });
+  }
+  const snap = v => STOPS.length ? STOPS.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a) : v;
+  const nextStop = v => TAP_STOPS.find(p => p > v + 0.5) ?? 0;
 
   // ---- animals: each head is drawn in a -60..60 box; the coloured base disc shows behind it ----
   const INK = '#1b1b1f';
@@ -536,6 +561,25 @@
     o.connect(g).connect(a.destination);
     o.start(t); o.stop(t + dur + 0.02);
   }
+  // A brassy note: sawtooth softened by a low-pass filter
+  function horn(a, f, t, dur, vol) {
+    const o = a.createOscillator(), lp = a.createBiquadFilter(), g = a.createGain();
+    o.type = 'sawtooth'; o.frequency.value = f;
+    lp.type = 'lowpass'; lp.frequency.value = 2200;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.setValueAtTime(vol, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp).connect(g).connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  // Bugle "charge": G C E G … E G, the last note held over a C major chord
+  function fanfare() {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime + 0.05;
+    [[392, 0], [523.25, 0.14], [659.25, 0.28], [783.99, 0.42], [659.25, 0.62]].forEach(([f, d]) => horn(a, f, t + d, 0.13, 0.12));
+    [783.99, 659.25, 523.25, 261.63].forEach((f, i) => horn(a, f, t + 0.76, 0.9, i ? 0.06 : 0.12));
+  }
   function tickSound(ch, v) {
     const now = performance.now();
     if (Math.abs(v - lastTickVal[ch]) >= 12 && now - lastTickAt > 45) {
@@ -546,12 +590,11 @@
 
   // ---- colour to match ----
   // The paw button shows a colour; turn the knobs until the page matches it.
-  // Targets use the tap steps (0, 51 … 255) so tapping alone can reach them.
-  const MATCH_TOL = 25;          // each channel within this counts as a match
+  // On easy and medium targets sit on the stops; on hard they can be any colour.
   const animalsBtn = document.getElementById('animals');
   let target = null, matched = false;
   function newTarget() {
-    const step = () => TAP_STEP * Math.floor(Math.random() * 6);
+    const step = () => STOPS.length ? STOPS[Math.floor(Math.random() * STOPS.length)] : Math.floor(Math.random() * 256);
     let t;
     do { t = { r: step(), g: step(), b: step() }; }
     while (target && t.r === target.r && t.g === target.g && t.b === target.b || isMatch(t));
@@ -562,14 +605,83 @@
     animalsBtn.style.setProperty('--target-ink', light ? '#000' : '#fff');
   }
   function isMatch(t) {
-    return ['r', 'g', 'b'].every(ch => Math.abs(vals[ch] - t[ch]) <= MATCH_TOL);
+    return ['r', 'g', 'b'].every(ch => Math.abs(Math.round(vals[ch]) - t[ch]) <= LEVELS[level].tol);
   }
   function checkMatch() {
+    // When knobs snap, wait until they've been let go and settled on a stop
+    if (STOPS.length && (document.body.classList.contains('turning') || Object.values(units).some(u => u.drag))) return;
     if (!target || matched || !isMatch(target)) return;
     matched = true;
     animalsBtn.classList.remove('won'); void animalsBtn.offsetWidth; animalsBtn.classList.add('won');
     Object.values(units).forEach(u => { const pop = u.knob.querySelector('.pop'); pop.classList.remove('swap'); void pop.offsetWidth; pop.classList.add('swap'); });
-    if (audio()) [0, 1, 2, 3].forEach(i => setTimeout(() => blip('r', [0, 85, 149, 255][i], true), 200 + i * 110));
+    fanfare();
+    confetti();
+  }
+
+  // ---- confetti: falls from the top, fluttering ----
+  const confettiCanvas = document.getElementById('confetti');
+  let pieces = [], confettiRunning = false;
+  function confetti() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const W = innerWidth, H = innerHeight;
+    const cols = ['#ff3b3b', '#ffd23f', '#3bd16f', '#2f8bff', '#ff7ad9', '#ffffff', '#ff9a1f', `rgb(${target.r},${target.g},${target.b})`];
+    for (let i = 0; i < 180; i++) {
+      pieces.push({
+        x: Math.random() * W, y: -20 - Math.random() * H * 0.6,
+        w: 7 + Math.random() * 6, h: 11 + Math.random() * 8,
+        vy: H * (0.22 + Math.random() * 0.2), vx: (Math.random() - 0.5) * 60,
+        rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 8,
+        flip: Math.random() * 6.28, vf: 6 + Math.random() * 8,
+        sway: Math.random() * 6.28, col: cols[i % cols.length],
+      });
+    }
+    if (confettiRunning) return;
+    confettiRunning = true;
+    const cx = confettiCanvas.getContext('2d');
+    const dpr = devicePixelRatio || 1;
+    confettiCanvas.width = W * dpr; confettiCanvas.height = H * dpr;
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    let last = performance.now();
+    const frame = now => {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      cx.clearRect(0, 0, W, H);
+      pieces = pieces.filter(p => p.y < H + 30);
+      for (const p of pieces) {
+        p.sway += dt * 3;
+        p.x += (p.vx + Math.sin(p.sway) * 40) * dt;
+        p.y += p.vy * dt;
+        p.rot += p.vr * dt; p.flip += p.vf * dt;
+        cx.save();
+        cx.translate(p.x, p.y); cx.rotate(p.rot);
+        cx.fillStyle = p.col;
+        cx.fillRect(-p.w / 2 * Math.cos(p.flip), -p.h / 2, p.w * Math.cos(p.flip), p.h);
+        cx.restore();
+      }
+      if (pieces.length) requestAnimationFrame(frame);
+      else { confettiRunning = false; cx.clearRect(0, 0, W, H); }
+    };
+    requestAnimationFrame(frame);
+  }
+
+  // ---- difficulty ----
+  // Shift-click the paw, or hold the paw and press a knob: top easy, middle medium, bottom hard.
+  function setLevel(name) {
+    level = name;
+    try { localStorage.setItem('colourKnobsLevel', name); } catch (e) {}
+    drawTicks();
+    target = null;   // so snapping can't count as a match for the old target
+    ['r', 'g', 'b'].forEach(ch => set(ch, snap(vals[ch]), false));
+    newTarget();
+    const i = LEVEL_NAMES.indexOf(name);
+    const pop = units['rgb'[i]].knob.querySelector('.pop');
+    pop.classList.remove('swap'); void pop.offsetWidth; pop.classList.add('swap');
+    // one, two or three notes for easy, medium, hard
+    for (let n = 0; n <= i; n++) setTimeout(() => blip('rgb'[i], 60 + n * 70, true), n * 130);
+  }
+  // After a drag or swipe, snap to the nearest stop, then see if it matches
+  function settle(ch) {
+    if (STOPS.length) set(ch, snap(vals[ch]), false);
+    checkMatch();
   }
 
   // ---- state → screen ----
@@ -602,6 +714,7 @@
       if (u.drag) return;
       e.preventDefault();
       audio();
+      if (pawHeld !== null) { pawUsed = true; setLevel(LEVEL_NAMES['rgb'.indexOf(ch)]); return; }
       k.setPointerCapture(e.pointerId);
       const r = k.getBoundingClientRect();
       const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -633,10 +746,10 @@
       k.classList.remove('dragging');
       if (!Object.values(units).some(o => o.drag)) document.body.classList.remove('turning');
       if (!d.moved && e.type === 'pointerup') {
-        const next = vals[ch] >= 254.5 ? 0 : Math.min(255, (Math.floor(vals[ch] / TAP_STEP) + 1) * TAP_STEP);
+        const next = nextStop(vals[ch]);
         set(ch, next, false);
         blip(ch, next, true);
-      }
+      } else settle(ch);
     };
     k.addEventListener('pointerup', end);
     k.addEventListener('pointercancel', end);
@@ -644,8 +757,12 @@
 
     k.addEventListener('keydown', e => {
       const up = ['ArrowUp', 'ArrowRight'].includes(e.key), down = ['ArrowDown', 'ArrowLeft'].includes(e.key);
-      if (up || down) { e.preventDefault(); set(ch, vals[ch] + (up ? KEY_STEP : -KEY_STEP)); }
-      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); const n = vals[ch] >= 254.5 ? 0 : Math.min(255, (Math.floor(vals[ch] / TAP_STEP) + 1) * TAP_STEP); set(ch, n, false); blip(ch, n, true); }
+      if (up || down) {
+        e.preventDefault();
+        if (STOPS.length) { const i = STOPS.indexOf(snap(vals[ch])) + (up ? 1 : -1); set(ch, STOPS[Math.max(0, Math.min(STOPS.length - 1, i))]); }
+        else set(ch, vals[ch] + (up ? 1 : -1));
+      }
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); const n = nextStop(vals[ch]); set(ch, n, false); blip(ch, n, true); }
     });
   });
 
@@ -670,7 +787,11 @@
     if (!ch) return;
     document.body.classList.add('turning');
     clearTimeout(wheelTimer);
-    wheelTimer = setTimeout(() => { if (!Object.values(units).some(o => o.drag)) document.body.classList.remove('turning'); }, 200);
+    wheelTimer = setTimeout(() => {
+      if (Object.values(units).some(o => o.drag)) return;
+      document.body.classList.remove('turning');
+      ['r', 'g', 'b'].forEach(settle);
+    }, 200);
     set(ch, vals[ch] + amt);
   }, { passive: false });
 
@@ -678,7 +799,12 @@
     document.addEventListener(t, e => e.preventDefault(), { passive: false }));
 
   // ---- corner buttons ----
-  animalsBtn.addEventListener('click', () => {
+  let pawHeld = null, pawUsed = false;   // pawUsed: a knob was pressed while holding, so skip the click
+  animalsBtn.addEventListener('pointerdown', e => { pawHeld = e.pointerId; pawUsed = false; });
+  ['pointerup', 'pointercancel'].forEach(t => window.addEventListener(t, e => { if (pawHeld === e.pointerId) pawHeld = null; }, true));
+  animalsBtn.addEventListener('click', e => {
+    if (pawUsed) { pawUsed = false; return; }
+    if (e.shiftKey) { setLevel(LEVEL_NAMES[(LEVEL_NAMES.indexOf(level) + 1) % LEVEL_NAMES.length]); return; }
     animalSet = (animalSet + 1) % GROUPS.length;
     drawAnimals(true);
     newTarget();
@@ -699,7 +825,8 @@
     const init = Object.assign({ r: 200, g: 60, b: 170, animalSet: 0 }, data || {});
     animalSet = (init.animalSet | 0) % GROUPS.length;
     drawAnimals(false);
-    for (const ch of ['r', 'g', 'b']) { vals[ch] = -1; set(ch, init[ch], false); }
+    drawTicks();
+    for (const ch of ['r', 'g', 'b']) { vals[ch] = -1; set(ch, snap(init[ch]), false); }
     newTarget();
   }
   window.claude?.hot?.snapshot?.(() => ({ ...vals, animalSet }));
